@@ -13,7 +13,7 @@ async function getAccessToken() {
   const clientSecret = process.env.BLIZZARD_CLIENT_SECRET;
   if (!clientId || !clientSecret) throw new Error('Blizzard API credentials not configured.');
 
-  const res = await fetch(`https://${REGION}.battle.net/oauth/token`, {
+  const res = await fetch('https://oauth.battle.net/token', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -42,7 +42,8 @@ async function getCharacterProfile(name, realm) {
 
   const res = await fetch(
     `https://${REGION}.api.blizzard.com/profile/wow/character/${slug}/${charName}` +
-    `?namespace=profile-${REGION}&locale=en_US&access_token=${token}`
+    `?namespace=profile-${REGION}&locale=en_US`,
+    { headers: { Authorization: `Bearer ${token}` } }
   );
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Character lookup failed: ${res.status}`);
@@ -56,7 +57,8 @@ async function getCharacterMedia(name, realm) {
 
   const res = await fetch(
     `https://${REGION}.api.blizzard.com/profile/wow/character/${slug}/${charName}/character-media` +
-    `?namespace=profile-${REGION}&locale=en_US&access_token=${token}`
+    `?namespace=profile-${REGION}&locale=en_US`,
+    { headers: { Authorization: `Bearer ${token}` } }
   );
   if (!res.ok) return null;
   const data = await res.json();
@@ -70,7 +72,8 @@ async function searchItem(query) {
   const encoded = encodeURIComponent(query);
   const res = await fetch(
     `https://${REGION}.api.blizzard.com/data/wow/search/item` +
-    `?namespace=static-${REGION}&locale=en_US&name.en_US=${encoded}&orderby=id&_pageSize=5&access_token=${token}`
+    `?namespace=static-${REGION}&locale=en_US&name.en_US=${encoded}&orderby=id&_pageSize=5`,
+    { headers: { Authorization: `Bearer ${token}` } }
   );
   if (!res.ok) return [];
   const data = await res.json();
@@ -79,14 +82,17 @@ async function searchItem(query) {
 
 async function getItem(itemId) {
   const token = await getAccessToken();
+  const headers = { Authorization: `Bearer ${token}` };
   const [itemRes, mediaRes] = await Promise.all([
     fetch(
       `https://${REGION}.api.blizzard.com/data/wow/item/${itemId}` +
-      `?namespace=static-${REGION}&locale=en_US&access_token=${token}`
+      `?namespace=static-${REGION}&locale=en_US`,
+      { headers }
     ),
     fetch(
       `https://${REGION}.api.blizzard.com/data/wow/media/item/${itemId}` +
-      `?namespace=static-${REGION}&locale=en_US&access_token=${token}`
+      `?namespace=static-${REGION}&locale=en_US`,
+      { headers }
     ),
   ]);
 
@@ -103,7 +109,8 @@ async function getWowTokenPrice() {
   const token = await getAccessToken();
   const res = await fetch(
     `https://${REGION}.api.blizzard.com/data/wow/token/index` +
-    `?namespace=dynamic-${REGION}&locale=en_US&access_token=${token}`
+    `?namespace=dynamic-${REGION}&locale=en_US`,
+    { headers: { Authorization: `Bearer ${token}` } }
   );
   if (!res.ok) throw new Error(`Token price fetch failed: ${res.status}`);
   return res.json(); // { price: number (in copper), last_updated_timestamp: number }
