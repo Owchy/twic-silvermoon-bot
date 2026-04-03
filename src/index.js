@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, Collection } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, REST, Routes } = require('discord.js');
 const fs   = require('fs');
 const path = require('path');
 
@@ -48,6 +48,23 @@ for (const file of fs.readdirSync(eventsPath).filter(f => f.endsWith('.js'))) {
   console.log(`  ✓ Registered event: ${event.name}`);
 }
 
+// ── Deploy Slash Commands ────────────────────────────────────────────────────
+
+async function deployCommands() {
+  const body = [...client.commands.values()].map(cmd => cmd.data.toJSON());
+  const rest = new REST().setToken(process.env.DISCORD_TOKEN);
+  const route = process.env.DISCORD_GUILD_ID
+    ? Routes.applicationGuildCommands(process.env.DISCORD_CLIENT_ID, process.env.DISCORD_GUILD_ID)
+    : Routes.applicationCommands(process.env.DISCORD_CLIENT_ID);
+
+  try {
+    await rest.put(route, { body });
+    console.log(`✅ Deployed ${body.length} slash commands.`);
+  } catch (err) {
+    console.error('❌ Failed to deploy slash commands:', err);
+  }
+}
+
 // ── Start ────────────────────────────────────────────────────────────────────
 
 if (!process.env.DISCORD_TOKEN) {
@@ -55,4 +72,4 @@ if (!process.env.DISCORD_TOKEN) {
   process.exit(1);
 }
 
-client.login(process.env.DISCORD_TOKEN);
+deployCommands().then(() => client.login(process.env.DISCORD_TOKEN));
