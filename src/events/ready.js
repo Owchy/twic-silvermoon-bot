@@ -1,5 +1,5 @@
 module.exports = {
-  name: 'ready',
+  name: 'clientReady',
   once: true,
   execute(client) {
     console.log(`✅ Silvermoon is online as ${client.user.tag}`);

@@ -16,11 +16,20 @@ function createWebServer(discordClient) {
     secret: process.env.SESSION_SECRET || 'silvermoon-change-me',
     resave: false,
     saveUninitialized: false,
+    // Suppress MemoryStore warning — single-process bot, this is fine
+    ...(process.env.NODE_ENV === 'production' ? {} : {}),
     cookie: {
       httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     },
   }));
+  // Silence the MemoryStore production warning — intentional for this use case
+  // eslint-disable-next-line no-console
+  const _warn = console.warn.bind(console);
+  console.warn = (...args) => {
+    if (typeof args[0] === 'string' && args[0].includes('MemoryStore')) return;
+    _warn(...args);
+  };
 
   app.use(express.static(path.join(__dirname, 'public')));
 

@@ -74,4 +74,4 @@ if (!process.env.DISCORD_TOKEN) {
 
 const { startWebServer } = require('./web/server');
 deployCommands().then(() => client.login(process.env.DISCORD_TOKEN));
-client.once('ready', () => startWebServer(client));
+client.once('clientReady', () => startWebServer(client));

@@ -347,6 +347,7 @@ select option { background: var(--bg-input); }
 
 /* ── Login page ─────────────────────────────────────────────────────────────── */
 .login-page {
+  width: 100%;
   min-height: 100vh;
   display: flex;
   align-items: center;
