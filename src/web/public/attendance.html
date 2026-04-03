@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Silvermoon — Attendance</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div id="sidebar"></div>
+  <div class="page-wrapper">
+    <header id="topbar"></header>
+    <main class="content">
+      <p class="text-muted mb-4" style="font-size:13px">Showing attendance from the last 90 days.</p>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Character</th>
+                <th>Attended</th>
+                <th>Attendance %</th>
+                <th>Benched</th>
+              </tr>
+            </thead>
+            <tbody id="att-body">
+              <tr><td colspan="5" class="text-muted text-center" style="padding:32px">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Player Detail Modal -->
+  <div class="modal-backdrop" id="detail-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="detail-title">Attendance History</h3>
+        <button class="modal-close" onclick="closeModal('detail-modal')">×</button>
+      </div>
+      <div id="detail-body"></div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script>
+    const STATUS_EMOJI = { accepted:'✅', late:'⏰', tentative:'❓', declined:'❌', benched:'🪑', absent:'🔴' };
+
+    initApp('Attendance').then(async user => {
+      if (!user) return;
+      const data = await fetch('/api/attendance').then(r => r.json());
+      const tbody = document.getElementById('att-body');
+
+      if (!data.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-muted text-center" style="padding:32px">No raid attendance data yet.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = data.map((row, i) => {
+        const pct = Math.round((row.attended / row.total) * 100);
+        const barClass = pct >= 75 ? '' : pct >= 50 ? 'mid' : 'low';
+        const name = row.characterName || `<@${row.discord_id}>`;
+        const classColor_ = row.class ? classColor(row.class) : 'var(--text)';
+        return `
+          <tr style="cursor:pointer" onclick="viewDetail('${row.discord_id}', '${name}')">
+            <td class="text-muted">${i + 1}</td>
+            <td><span style="color:${classColor_};font-weight:500">${row.class ? classEmoji(row.class) + ' ' : ''}${name}</span></td>
+            <td>${row.attended} / ${row.total}</td>
+            <td>
+              <div style="display:flex;align-items:center;gap:10px">
+                <div class="att-bar-wrap"><div class="att-bar ${barClass}" style="width:${pct}%"></div></div>
+                <span style="font-weight:600;color:${pct>=75?'var(--green)':pct>=50?'#f5c518':'var(--red)'}">${pct}%</span>
+              </div>
+            </td>
+            <td>${row.benched > 0 ? `<span class="text-muted">🪑 ${row.benched}</span>` : '—'}</td>
+          </tr>`;
+      }).join('');
+    });
+
+    async function viewDetail(discordId, name) {
+      document.getElementById('detail-title').textContent = `History — ${name}`;
+      document.getElementById('detail-body').innerHTML = '<div class="text-muted" style="padding:16px">Loading…</div>';
+      openModal('detail-modal');
+
+      const history = await fetch(`/api/attendance/${discordId}`).then(r => r.json());
+      if (!history.length) {
+        document.getElementById('detail-body').innerHTML = '<div class="empty-state"><p>No history found.</p></div>';
+        return;
+      }
+
+      document.getElementById('detail-body').innerHTML = `
+        <table><thead><tr><th>Status</th><th>Raid</th><th>Date</th></tr></thead><tbody>` +
+        history.map(r => `
+          <tr>
+            <td>${STATUS_EMOJI[r.status] || '•'} ${r.status}</td>
+            <td>${r.difficulty} ${r.title}</td>
+            <td class="text-muted">${fmtDateShort(r.raid_date)}</td>
+          </tr>`).join('') +
+        `</tbody></table>`;
+    }
+  </script>
+</body>
+</html>

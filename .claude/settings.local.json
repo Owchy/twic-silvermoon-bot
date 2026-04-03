@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:develop.battle.net)",
+      "WebFetch(domain:community.developer.battle.net)"
+    ]
+  }
+}

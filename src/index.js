@@ -72,4 +72,6 @@ if (!process.env.DISCORD_TOKEN) {
   process.exit(1);
 }
 
+const { startWebServer } = require('./web/server');
 deployCommands().then(() => client.login(process.env.DISCORD_TOKEN));
+client.once('ready', () => startWebServer(client));

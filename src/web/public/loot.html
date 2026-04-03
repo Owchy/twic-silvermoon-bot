@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Silvermoon — Loot</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div id="sidebar"></div>
+  <div class="page-wrapper">
+    <header id="topbar"></header>
+    <main class="content">
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Date</th><th>Character</th><th>Item</th><th>iLvl</th><th>Type</th></tr>
+            </thead>
+            <tbody id="loot-body">
+              <tr><td colspan="5" class="text-muted text-center" style="padding:32px">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Award Loot Modal (officer only) -->
+  <div class="modal-backdrop" id="award-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Award Loot</h3>
+        <button class="modal-close" onclick="closeModal('award-modal')">×</button>
+      </div>
+      <form id="award-form">
+        <div class="form-group">
+          <label>Player</label>
+          <select name="discordId" id="player-select" required>
+            <option value="">Select a player…</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Item Name</label>
+          <input type="text" name="itemName" placeholder="e.g. Frostfire Legguards" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Item Level</label>
+            <input type="number" name="ilvl" placeholder="e.g. 639" min="1" max="999">
+          </div>
+          <div class="form-group">
+            <label>Type</label>
+            <select name="lootType">
+              <option value="main_spec">Main Spec</option>
+              <option value="off_spec">Off Spec</option>
+              <option value="split">Split Run</option>
+              <option value="greed">Greed</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" onclick="closeModal('award-modal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Award</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script>
+    const TYPE_LABEL = { main_spec:'Main Spec', off_spec:'Off Spec', split:'Split', greed:'Greed' };
+
+    initApp('Loot').then(async user => {
+      if (!user) return;
+
+      if (user.isOfficer) {
+        document.getElementById('topbar-actions').innerHTML =
+          `<button class="btn btn-primary" onclick="openAwardModal()">+ Award Loot</button>`;
+
+        // Load members for dropdown
+        const members = await fetch('/api/members').then(r => r.json());
+        const sel = document.getElementById('player-select');
+        members.forEach(m => {
+          const opt = document.createElement('option');
+          opt.value   = m.discordId;
+          opt.textContent = m.characterName;
+          sel.appendChild(opt);
+        });
+      }
+
+      await loadLoot();
+    });
+
+    async function loadLoot() {
+      const history = await fetch('/api/loot').then(r => r.json());
+      const tbody = document.getElementById('loot-body');
+
+      if (!history.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-muted text-center" style="padding:32px">No loot recorded yet.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = history.map(row => `
+        <tr>
+          <td class="text-muted">${fmtDateShort(row.awarded_at)}</td>
+          <td><strong>${row.character_name}</strong></td>
+          <td>${row.item_id ? `<a href="https://www.wowhead.com/item=${row.item_id}" target="_blank">${row.item_name}</a>` : row.item_name}</td>
+          <td>${row.item_level || '—'}</td>
+          <td><span class="badge badge-${row.loot_type === 'main_spec' ? 'accepted' : row.loot_type === 'greed' ? 'benched' : 'tentative'}">${TYPE_LABEL[row.loot_type] || row.loot_type}</span></td>
+        </tr>`).join('');
+    }
+
+    function openAwardModal() { openModal('award-modal'); }
+
+    document.getElementById('award-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target));
+      try {
+        await apiRequest('POST', '/api/loot', data);
+        closeModal('award-modal');
+        e.target.reset();
+        showToast('Loot recorded!');
+        await loadLoot();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+  </script>
+</body>
+</html>

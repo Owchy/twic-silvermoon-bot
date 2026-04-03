@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Silvermoon — Mythic+</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div id="sidebar"></div>
+  <div class="page-wrapper">
+    <header id="topbar"></header>
+    <main class="content">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">🏆 Leaderboard — Highest Key</div>
+          <div id="leaderboard-body"><div class="text-muted">Loading…</div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">📜 Recent Runs</div>
+          <div id="runs-body"><div class="text-muted">Loading…</div></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script>
+    const MEDALS = ['🥇','🥈','🥉'];
+
+    initApp('Mythic+').then(async user => {
+      if (!user) return;
+      const data = await fetch('/api/mplus').then(r => r.json());
+
+      // Leaderboard
+      const lbEl = document.getElementById('leaderboard-body');
+      if (!data.leaderboard?.length) {
+        lbEl.innerHTML = '<div class="empty-state"><p>No keys logged yet.</p></div>';
+      } else {
+        lbEl.innerHTML = `<table><thead><tr><th>#</th><th>Character</th><th>Key</th><th>Dungeon</th></tr></thead><tbody>` +
+          data.leaderboard.map((row, i) => `
+            <tr>
+              <td>${MEDALS[i] || (i + 1) + '.'}</td>
+              <td>${row.class ? `<span style="color:${classColor(row.class)};font-weight:500">${classEmoji(row.class)} ${row.characterName}</span>` : row.characterName}</td>
+              <td><span style="font-weight:700;color:${row.inTime ? 'var(--green)' : 'var(--red)'}">+${row.keyLevel}</span></td>
+              <td class="text-muted">${row.dungeon}</td>
+            </tr>`).join('') +
+          `</tbody></table>`;
+      }
+
+      // Recent runs
+      const runsEl = document.getElementById('runs-body');
+      if (!data.runs?.length) {
+        runsEl.innerHTML = '<div class="empty-state"><p>No runs logged yet. Use <code>/mplus log</code> in Discord.</p></div>';
+      } else {
+        runsEl.innerHTML = `<table><thead><tr><th>Key</th><th>Dungeon</th><th>Date</th></tr></thead><tbody>` +
+          data.runs.map(r => `
+            <tr>
+              <td><span style="font-weight:700;color:${r.in_time ? 'var(--green)' : 'var(--red)'}">+${r.key_level}</span></td>
+              <td>${r.dungeon}</td>
+              <td class="text-muted">${fmtDateShort(r.completed_at)}</td>
+            </tr>`).join('') +
+          `</tbody></table>`;
+      }
+    });
+  </script>
+</body>
+</html>

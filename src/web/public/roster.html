@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Silvermoon — Roster</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div id="sidebar"></div>
+  <div class="page-wrapper">
+    <header id="topbar"></header>
+    <main class="content">
+      <div class="card">
+        <div class="table-wrap">
+          <table id="roster-table">
+            <thead>
+              <tr>
+                <th>Character</th>
+                <th>Class / Spec</th>
+                <th>Role</th>
+                <th>iLvl</th>
+                <th>Rank</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="roster-body">
+              <tr><td colspan="6" class="text-muted text-center" style="padding:32px">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Edit Member Modal (officer only) -->
+  <div class="modal-backdrop" id="edit-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="edit-modal-title">Edit Member</h3>
+        <button class="modal-close" onclick="closeModal('edit-modal')">×</button>
+      </div>
+      <form id="edit-form">
+        <input type="hidden" name="discordId">
+        <div class="form-group">
+          <label>Rank</label>
+          <select name="rank">
+            <option value="gm">Guild Master</option>
+            <option value="officer">Officer</option>
+            <option value="raider">Raider</option>
+            <option value="trial">Trial</option>
+            <option value="social">Social</option>
+            <option value="alt">Alt</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Notes</label>
+          <textarea name="notes" placeholder="Officer notes about this member…"></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" onclick="closeModal('edit-modal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script>
+    const ROLE_EMOJI = { tank: '🛡️', healer: '💚', dps: '⚔️' };
+
+    initApp('Roster').then(async user => {
+      if (!user) return;
+      await loadRoster();
+    });
+
+    async function loadRoster() {
+      const members = await fetch('/api/roster').then(r => r.json());
+      const tbody = document.getElementById('roster-body');
+      const isOfficer = currentUser?.isOfficer;
+
+      if (!members.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-muted text-center" style="padding:32px">No roster entries yet.</td></tr>';
+        return;
+      }
+
+      const RANK_ORDER = ['gm','officer','raider','trial','social','alt'];
+      members.sort((a, b) => RANK_ORDER.indexOf(a.rank) - RANK_ORDER.indexOf(b.rank));
+
+      tbody.innerHTML = members.map(m => `
+        <tr>
+          <td><strong>${m.character_name || `<@${m.discord_id}>`}</strong></td>
+          <td>${m.class ? classBadge(m.class, m.spec) : '<span class="text-muted">—</span>'}</td>
+          <td>${m.role ? `${ROLE_EMOJI[m.role] || ''} ${m.role}` : '—'}</td>
+          <td>${m.item_level || '—'}</td>
+          <td>${rankBadge(m.rank)}</td>
+          <td class="text-right">
+            ${isOfficer ? `
+              <button class="btn btn-ghost btn-sm" onclick="editMember('${m.discord_id}', '${m.rank}', ${JSON.stringify(m.notes || '').replace(/"/g,'&quot;')})">Edit</button>
+              <button class="btn btn-danger btn-sm" onclick="removeMember('${m.discord_id}', '${m.character_name || m.discord_id}')">Remove</button>
+            ` : ''}
+          </td>
+        </tr>`).join('');
+    }
+
+    function editMember(discordId, rank, notes) {
+      const form = document.getElementById('edit-form');
+      form.discordId.value = discordId;
+      form.rank.value = rank;
+      form.notes.value = notes || '';
+      document.getElementById('edit-modal-title').textContent = 'Edit Member';
+      openModal('edit-modal');
+    }
+
+    async function removeMember(discordId, name) {
+      if (!confirm(`Remove ${name} from the roster?`)) return;
+      await apiRequest('DELETE', `/api/roster/${discordId}`);
+      showToast(`${name} removed.`);
+      await loadRoster();
+    }
+
+    document.getElementById('edit-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target));
+      try {
+        await apiRequest('PATCH', `/api/roster/${data.discordId}`, { rank: data.rank, notes: data.notes });
+        closeModal('edit-modal');
+        showToast('Member updated.');
+        await loadRoster();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+  </script>
+</body>
+</html>

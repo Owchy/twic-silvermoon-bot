@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Silvermoon — Settings</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div id="sidebar"></div>
+  <div class="page-wrapper">
+    <header id="topbar"></header>
+    <main class="content">
+      <div class="grid-2" style="align-items:start">
+
+        <!-- Bot Config -->
+        <div class="card">
+          <div class="card-title">Bot Configuration</div>
+          <form id="settings-form">
+            <div class="form-group">
+              <label>Guild Name</label>
+              <input type="text" name="guild_name" id="guild_name" placeholder="My Awesome Guild">
+            </div>
+            <div class="form-group">
+              <label>Realm</label>
+              <input type="text" name="realm" id="realm" placeholder="Area-52">
+            </div>
+            <div class="form-group">
+              <label>Raid Channel ID</label>
+              <input type="text" name="raid_channel_id" id="raid_channel_id" placeholder="Discord channel ID">
+            </div>
+            <div class="form-group">
+              <label>Log Channel ID</label>
+              <input type="text" name="log_channel_id" id="log_channel_id" placeholder="Discord channel ID">
+            </div>
+            <div class="form-group">
+              <label>Officer Role ID</label>
+              <input type="text" name="officer_role_id" id="officer_role_id" placeholder="Discord role ID">
+            </div>
+            <div class="form-group">
+              <label>Raider Role ID</label>
+              <input type="text" name="raider_role_id" id="raider_role_id" placeholder="Discord role ID">
+            </div>
+            <div class="form-group">
+              <label>Trial Role ID</label>
+              <input type="text" name="trial_role_id" id="trial_role_id" placeholder="Discord role ID">
+            </div>
+            <button type="submit" class="btn btn-primary w-full">Save Settings</button>
+          </form>
+        </div>
+
+        <!-- Recruitment -->
+        <div class="card">
+          <div class="card-title">Recruitment Board</div>
+          <div id="recruitment-list" class="mb-4"></div>
+
+          <form id="recruit-form" style="border-top:1px solid var(--border);padding-top:16px;margin-top:4px">
+            <div class="form-group">
+              <label>Class / Spec</label>
+              <input type="text" name="key" placeholder='e.g. "Restoration Druid" or "Hunter"'>
+            </div>
+            <div class="form-group">
+              <label>Status</label>
+              <select name="status">
+                <option value="open">🟢 Open</option>
+                <option value="reviewing">🟡 Reviewing</option>
+                <option value="closed">🔴 Closed</option>
+              </select>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button type="submit" class="btn btn-primary" style="flex:1">Add / Update</button>
+              <button type="button" class="btn btn-ghost" onclick="clearRecruitment()">Clear All</button>
+            </div>
+          </form>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script>
+    let currentNeeds = {};
+
+    initApp('Settings').then(async user => {
+      if (!user) return;
+      if (!user.isOfficer) {
+        document.querySelector('main').innerHTML = '<div class="empty-state"><p>Officer access required.</p></div>';
+        return;
+      }
+
+      const s = await fetch('/api/settings').then(r => r.json());
+      const fields = ['guild_name','realm','raid_channel_id','log_channel_id','officer_role_id','raider_role_id','trial_role_id'];
+      fields.forEach(f => {
+        const el = document.getElementById(f);
+        if (el && s[f]) el.value = s[f];
+      });
+
+      if (s.recruitment_needs) {
+        try { currentNeeds = JSON.parse(s.recruitment_needs); } catch {}
+      }
+      renderRecruitment();
+    });
+
+    function renderRecruitment() {
+      const el = document.getElementById('recruitment-list');
+      const entries = Object.entries(currentNeeds);
+      if (!entries.length) {
+        el.innerHTML = '<p class="text-muted" style="font-size:13px">No recruitment entries yet.</p>';
+        return;
+      }
+      const EMOJI = { open:'🟢', reviewing:'🟡', closed:'🔴' };
+      el.innerHTML = entries.map(([key, status]) => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+          <span>${EMOJI[status] || ''} <strong>${key}</strong></span>
+          <button class="btn btn-danger btn-sm" onclick="removeRecruit('${key}')">×</button>
+        </div>`).join('');
+    }
+
+    function removeRecruit(key) {
+      delete currentNeeds[key];
+      renderRecruitment();
+      saveRecruitment();
+    }
+
+    async function clearRecruitment() {
+      if (!confirm('Clear all recruitment entries?')) return;
+      currentNeeds = {};
+      renderRecruitment();
+      await saveRecruitment();
+    }
+
+    async function saveRecruitment() {
+      await apiRequest('PATCH', '/api/settings', { recruitment_needs: currentNeeds });
+    }
+
+    document.getElementById('settings-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target));
+      // Remove empty strings
+      Object.keys(data).forEach(k => { if (!data[k]) delete data[k]; });
+      try {
+        await apiRequest('PATCH', '/api/settings', data);
+        showToast('Settings saved!');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    document.getElementById('recruit-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target));
+      if (!data.key.trim()) return;
+      currentNeeds[data.key.trim()] = data.status;
+      e.target.reset();
+      renderRecruitment();
+      await saveRecruitment();
+      showToast('Recruitment updated!');
+    });
+  </script>
+</body>
+</html>

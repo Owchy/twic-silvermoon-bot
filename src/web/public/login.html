@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Silvermoon — Login</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="login-page">
+    <div class="login-card">
+      <h1>⚔️ Silvermoon</h1>
+      <p>Guild management dashboard</p>
+      <a href="/auth/discord" class="discord-btn">
+        <svg width="20" height="20" viewBox="0 0 71 55" fill="none"><path d="M60.1 4.9A58.6 58.6 0 0 0 45.5.9a40.3 40.3 0 0 0-1.8 3.6 54.2 54.2 0 0 0-16.3 0A40.6 40.6 0 0 0 25.6.9 58.4 58.4 0 0 0 11 4.9C1.6 19 -1 32.7.3 46.2a59 59 0 0 0 18 9.1 44.7 44.7 0 0 0 3.8-6.3 38.3 38.3 0 0 1-6-2.9l1.4-1.1a42 42 0 0 0 36.1 0l1.5 1.1a38.3 38.3 0 0 1-6 2.9 44.4 44.4 0 0 0 3.8 6.3 58.8 58.8 0 0 0 18-9A56.5 56.5 0 0 0 60.1 4.9ZM23.8 37.8c-3.5 0-6.4-3.2-6.4-7.2s2.8-7.2 6.4-7.2 6.5 3.3 6.4 7.2c0 4-2.9 7.2-6.4 7.2Zm23.4 0c-3.5 0-6.4-3.2-6.4-7.2s2.8-7.2 6.4-7.2 6.5 3.3 6.4 7.2c0 4-2.8 7.2-6.4 7.2Z" fill="currentColor"/></svg>
+        Login with Discord
+      </a>
+      <div id="error-msg" class="login-error"></div>
+    </div>
+  </div>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const err = params.get('error');
+    if (err) {
+      const msgs = {
+        invalid_state: 'Login failed — invalid state. Please try again.',
+        not_member:    'You must be a member of the guild to access this dashboard.',
+        auth_failed:   'Authentication failed. Please try again.',
+      };
+      document.getElementById('error-msg').textContent = msgs[err] || 'An error occurred.';
+    }
+  </script>
+</body>
+</html>
